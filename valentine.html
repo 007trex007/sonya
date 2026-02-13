@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Валентинка 💘</title>
+  <style>
+    :root{
+      --glass: rgba(255,255,255,.14);
+      --glass2: rgba(255,255,255,.10);
+      --stroke: rgba(255,255,255,.22);
+      --shadow: 0 18px 60px rgba(0,0,0,.35);
+      --text: rgba(255,255,255,.95);
+      --muted: rgba(255,255,255,.8);
+    }
+
+    *{ box-sizing: border-box; }
+    html, body{ height: 100%; margin:0; }
+    body{
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color: var(--text);
+      overflow: hidden;
+      background: #000;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+    }
+
+    #stage{
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      height: 100svh;
+      overflow: hidden;
+      background: url("media/background.webp") center/cover no-repeat;
+    }
+    #stage::before{
+      content:"";
+      position:absolute; inset:0;
+      background:
+        radial-gradient(1200px 700px at 50% 20%, rgba(255,0,120,.20), transparent 55%),
+        radial-gradient(900px 600px at 15% 85%, rgba(0,180,255,.18), transparent 60%),
+        radial-gradient(900px 600px at 85% 80%, rgba(255,220,0,.14), transparent 60%);
+      pointer-events:none;
+      mix-blend-mode: screen;
+      opacity:.9;
+    }
+
+    #hud{
+      position:absolute;
+      top: calc(env(safe-area-inset-top) + 10px);
+      left: 0;
+      width: 100%;
+      display:flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 10px 14px;
+      z-index: 5;
+      pointer-events:none;
+    }
+
+    #score{
+      font-weight: 900;
+      font-size: clamp(34px, 6vw, 46px);
+      letter-spacing: 1px;
+      text-shadow: 0 6px 18px rgba(0,0,0,.55);
+      padding: 6px 12px;
+      border-radius: 16px;
+      background: rgba(0,0,0,.16);
+      border: 1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(10px);
+      transform-origin: left top;
+    }
+
+    #timer{
+      font-weight: 800;
+      font-size: 20px;
+      text-shadow: 0 6px 18px rgba(0,0,0,.55);
+      padding: 6px 10px;
+      border-radius: 14px;
+      background: rgba(0,0,0,.18);
+      border: 1px solid rgba(255,255,255,.12);
+      backdrop-filter: blur(10px);
+      min-width: 86px;
+      text-align:center;
+    }
+
+    /* Игрок — чуть меньше */
+    #player{
+      position:absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      bottom: env(safe-area-inset-bottom);
+      width: min(44vw, 200px);
+      height: auto;
+      z-index: 4;
+      user-select:none;
+      -webkit-user-drag:none;
+      filter: drop-shadow(0 12px 18px rgba(0,0,0,.45));
+      pointer-events:none;
+    }
+
+    .falling{
+      position:absolute;
+      width: 56px;
+      height: 56px;
+      z-index: 3;
+      user-select:none;
+      -webkit-user-drag:none;
+      pointer-events:none;
+      filter: drop-shadow(0 10px 14px rgba(0,0,0,.35));
+    }
+    @media (max-width: 380px){
+      .falling{ width: 46px; height: 46px; }
+      #player{ width: min(52vw, 190px); }
+    }
+
+    .overlay{
+      position:absolute;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding: 18px;
+      z-index: 20;
+      background: rgba(0,0,0,.35);
+      backdrop-filter: blur(10px);
+    }
+    .hidden{ display:none !important; }
+
+    .card{
+      width: min(520px, 100%);
+      border-radius: 22px;
+      background: linear-gradient(180deg, var(--glass), var(--glass2));
+      border: 1px solid var(--stroke);
+      box-shadow: var(--shadow);
+      padding: 18px 16px;
+      position: relative;
+      overflow:hidden;
+    }
+    .card::before{
+      content:"";
+      position:absolute;
+      inset:-2px;
+      background: radial-gradient(900px 300px at 10% 0%, rgba(255,60,160,.25), transparent 55%),
+                  radial-gradient(700px 260px at 90% 20%, rgba(0,200,255,.18), transparent 55%),
+                  radial-gradient(700px 260px at 50% 120%, rgba(255,220,0,.12), transparent 55%);
+      pointer-events:none;
+    }
+    .card > *{ position: relative; z-index:1; }
+
+    .title{
+      font-size: 18px;
+      font-weight: 900;
+      margin: 0 0 10px 0;
+      letter-spacing:.2px;
+      text-shadow: 0 8px 18px rgba(0,0,0,.35);
+    }
+    .text{
+      font-size: 16px;
+      line-height: 1.35;
+      margin: 0 0 14px 0;
+      color: var(--muted);
+      white-space: pre-wrap;
+    }
+
+    .btnRow{
+      display:flex;
+      gap: 10px;
+      justify-content:flex-end;
+      margin-top: 10px;
+    }
+
+    .btn{
+      border: none;
+      border-radius: 16px;
+      padding: 12px 16px;
+      font-weight: 900;
+      font-size: 16px;
+      color: rgba(255,255,255,.96);
+      background: linear-gradient(135deg, rgba(255,72,149,.95), rgba(255,195,74,.95));
+      box-shadow: 0 14px 30px rgba(255,72,149,.22);
+      border: 1px solid rgba(255,255,255,.22);
+      cursor:pointer;
+      transition: transform .08s ease, filter .12s ease;
+      touch-action: manipulation;
+    }
+    .btn:active{ transform: translateY(1px) scale(.99); filter: brightness(.97); }
+
+    .btn.secondary{
+      background: linear-gradient(135deg, rgba(80,170,255,.95), rgba(69,226,154,.95));
+      box-shadow: 0 14px 30px rgba(80,170,255,.18);
+    }
+
+    #gameOverTitle{
+      font-size: 26px;
+      font-weight: 1000;
+      margin: 0 0 6px 0;
+    }
+    #gameOverScore{
+      font-size: 18px;
+      font-weight: 900;
+      margin: 0;
+      color: rgba(255,255,255,.9);
+    }
+    .hint{
+      margin-top: 12px;
+      font-size: 13px;
+      color: rgba(255,255,255,.75);
+    }
+
+    .sparkle{
+      position:absolute;
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.85);
+      filter: blur(.2px);
+      opacity: .7;
+      animation: floaty 4s ease-in-out infinite;
+      pointer-events:none;
+      z-index: 2;
+    }
+    @keyframes floaty{
+      0%,100%{ transform: translateY(0); opacity:.55; }
+      50%{ transform: translateY(-10px); opacity:.85; }
+    }
+  </style>
+</head>
+<body>
+  <div id="stage">
+    <div id="hud" class="hidden">
+      <div id="score">0</div>
+      <div id="timer">1:00</div>
+    </div>
+
+    <img id="player" class="hidden" src="media/sonya.png" alt="sonya"/>
+
+    <div id="modal1" class="overlay">
+      <div class="card">
+        <div class="title">💌</div>
+        <p class="text">Сончик, спасиба тебе что написала мне 2 недели назад. Теперь мне очень приятно от осознания того, что мы снова вместе спустя столько времени. эмм типа с днём святого валентина короч</p>
+        <div class="btnRow">
+          <button id="toModal2" class="btn">Дальше</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="modal2" class="overlay hidden">
+      <div class="card">
+        <div class="title">Лови сердечки, а не помидоры</div>
+        <p class="text">нууу типа тебе надо двигать соню влева вправо типа ловить крч</p>
+        <div class="btnRow">
+          <button id="startBtn" class="btn secondary">Начать</button>
+        </div>
+        <div class="hint">Даю тебе 60 сек на это</div>
+      </div>
+    </div>
+
+    <div id="gameOver" class="overlay hidden">
+      <div class="card">
+        <div id="gameOverTitle">game over</div>
+        <p id="gameOverScore">очков: 0</p>
+        <div class="btnRow">
+          <button id="retryBtn" class="btn">ещё разок</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const stage = document.getElementById("stage");
+    const hud = document.getElementById("hud");
+    const scoreEl = document.getElementById("score");
+    const timerEl = document.getElementById("timer");
+    const playerEl = document.getElementById("player");
+
+    const modal1 = document.getElementById("modal1");
+    const modal2 = document.getElementById("modal2");
+    const gameOver = document.getElementById("gameOver");
+    const gameOverScore = document.getElementById("gameOverScore");
+
+    const toModal2 = document.getElementById("toModal2");
+    const startBtn = document.getElementById("startBtn");
+    const retryBtn = document.getElementById("retryBtn");
+
+    const IMG_TOMATO = "media/tomato.webp";
+    const IMG_LOVE   = "media/love.png";
+
+    let running = false;
+    let score = 0;
+    let timeLeftMs = 60_000;
+
+    let playerX = 0;
+    let playerW = 0;
+
+    let lastFrame = 0;
+    let spawnAcc = 0;
+    const items = [];
+
+    let timerInterval = null;
+
+    // первые 5 секунд только сердечки
+    const SAFE_ONLY_LOVE_MS = 5_000;
+    let startedAtPerf = 0;
+
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+    function formatTime(ms){
+      const totalSec = Math.max(0, Math.ceil(ms / 1000));
+      const m = Math.floor(totalSec / 60);
+      const s = totalSec % 60;
+      return `${m}:${String(s).padStart(2,"0")}`;
+    }
+
+    function stageRect(){ return stage.getBoundingClientRect(); }
+    function playerRect(){ return playerEl.getBoundingClientRect(); }
+
+    // ✅ старый эффект как раньше
+    function setScore(v){
+      score = v;
+      scoreEl.textContent = String(score);
+      scoreEl.animate(
+        [{transform:"scale(1)"},{transform:"scale(1.08)"},{transform:"scale(1)"}],
+        {duration: 170}
+      );
+    }
+
+    function setTimer(ms){
+      timeLeftMs = ms;
+      timerEl.textContent = formatTime(timeLeftMs);
+      timerEl.style.borderColor = (timeLeftMs <= 10_000)
+        ? "rgba(255,77,109,.55)"
+        : "rgba(255,255,255,.12)";
+    }
+
+    function clearItems(){
+      for (const it of items) it.el.remove();
+      items.length = 0;
+    }
+
+    function spawnSparkles(){
+      for (let i=0; i<10; i++){
+        const sp = document.createElement("div");
+        sp.className = "sparkle";
+        const r = stageRect();
+        sp.style.left = `${Math.random()*r.width}px`;
+        sp.style.top  = `${Math.random()*r.height*0.6}px`;
+        sp.style.animationDelay = `${Math.random()*2}s`;
+        sp.style.opacity = (0.35 + Math.random()*0.45).toFixed(2);
+        stage.appendChild(sp);
+        setTimeout(()=>sp.remove(), 9000 + Math.random()*4000);
+      }
+    }
+
+    function updatePlayerMetrics(){
+      const pr = playerEl.getBoundingClientRect();
+      playerW = pr.width;
+      const sr = stageRect();
+      if (!playerX || Number.isNaN(playerX)){
+        playerX = (sr.width - playerW) / 2;
+      }
+      applyPlayerX();
+    }
+
+    function applyPlayerX(){
+      const sr = stageRect();
+      playerX = clamp(playerX, 0, sr.width - playerW);
+      playerEl.style.transform = "translateX(0)";
+      playerEl.style.left = `${playerX}px`;
+    }
+
+    let dragging = false;
+    let dragOffsetX = 0;
+
+    function pointerDown(e){
+      if (!running) return;
+      dragging = true;
+      const x = (e.touches ? e.touches[0].clientX : e.clientX);
+      const pr = playerRect();
+      dragOffsetX = x - pr.left;
+    }
+
+    function pointerMove(e){
+      if (!running || !dragging) return;
+      const x = (e.touches ? e.touches[0].clientX : e.clientX);
+      const sr = stageRect();
+      playerX = x - sr.left - dragOffsetX;
+      applyPlayerX();
+      e.preventDefault?.();
+    }
+
+    function pointerUp(){ dragging = false; }
+
+    stage.addEventListener("touchstart", pointerDown, {passive:false});
+    stage.addEventListener("touchmove", pointerMove, {passive:false});
+    stage.addEventListener("touchend", pointerUp, {passive:true});
+    stage.addEventListener("mousedown", pointerDown);
+    window.addEventListener("mousemove", pointerMove, {passive:false});
+    window.addEventListener("mouseup", pointerUp);
+
+    function spawnItem(){
+      const sr = stageRect();
+      const el = document.createElement("img");
+      el.className = "falling";
+
+      const elapsed = performance.now() - startedAtPerf;
+      const onlyLove = elapsed < SAFE_ONLY_LOVE_MS;
+
+      let type;
+      if (onlyLove){
+        type = "love";
+      } else {
+        type = (Math.random() < 0.55) ? "love" : "tomato";
+      }
+
+      el.src = (type === "love") ? IMG_LOVE : IMG_TOMATO;
+      el.alt = type;
+
+      stage.appendChild(el);
+      const size = el.getBoundingClientRect().width || 56;
+
+      const x = Math.random() * (sr.width - size);
+      const y = -size - (Math.random()*60);
+      const vy = 240 + Math.random()*240;
+
+      el.style.left = `${x}px`;
+      el.style.top = `${y}px`;
+
+      items.push({el, x, y, vy, type, size});
+    }
+
+    function intersects(a, b){
+      return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
+    }
+
+    function loop(ts){
+      if (!running) return;
+
+      if (!lastFrame) lastFrame = ts;
+      const dt = Math.min(0.033, (ts - lastFrame) / 1000);
+      lastFrame = ts;
+
+      spawnAcc += dt;
+      const spawnEvery = 0.36 + Math.random()*0.10;
+      if (spawnAcc >= spawnEvery){
+        spawnAcc = 0;
+        spawnItem();
+        if (Math.random() < 0.22) spawnItem();
+      }
+
+      const pr = playerRect();
+
+      for (let i = items.length - 1; i >= 0; i--){
+        const it = items[i];
+        it.y += it.vy * dt;
+        it.el.style.top = `${it.y}px`;
+
+        const ir = it.el.getBoundingClientRect();
+        if (intersects(pr, ir)){
+          if (it.type === "love"){
+            setScore(score + 1);
+          } else {
+            setScore(score - 1);
+          }
+
+          it.el.animate(
+            [{transform:"scale(1)", opacity:1},{transform:"scale(1.25)", opacity:0}],
+            {duration: 160, easing:"ease-out"}
+          );
+          it.el.remove();
+          items.splice(i, 1);
+
+          if (score <= -1){
+            endGame();
+            return;
+          }
+          continue;
+        }
+
+        const sr = stageRect();
+        if (it.y > sr.height + 80){
+          it.el.remove();
+          items.splice(i, 1);
+        }
+      }
+
+      requestAnimationFrame(loop);
+    }
+
+    function startGame(){
+      gameOver.classList.add("hidden");
+      modal1.classList.add("hidden");
+      modal2.classList.add("hidden");
+      hud.classList.remove("hidden");
+      playerEl.classList.remove("hidden");
+
+      running = true;
+      lastFrame = 0;
+      spawnAcc = 0;
+      clearItems();
+      setScore(0);
+      setTimer(60_000);
+
+      startedAtPerf = performance.now();
+
+      requestAnimationFrame(() => { updatePlayerMetrics(); });
+
+      spawnSparkles();
+      setTimeout(() => { if(running) spawnSparkles(); }, 1500);
+      setTimeout(() => { if(running) spawnSparkles(); }, 3300);
+
+      if (timerInterval) clearInterval(timerInterval);
+      const startAt = performance.now();
+      timerInterval = setInterval(() => {
+        const elapsed = performance.now() - startAt;
+        const left = 60_000 - elapsed;
+        setTimer(left);
+        if (left <= 0) endGame();
+      }, 120);
+
+      requestAnimationFrame(loop);
+    }
+
+    function endGame(){
+      if (!running) return;
+      running = false;
+
+      if (timerInterval) clearInterval(timerInterval);
+      timerInterval = null;
+
+      clearItems();
+
+      gameOverScore.textContent = `очков: ${score}`;
+      gameOver.classList.remove("hidden");
+
+      playerEl.animate(
+        [{filter:"grayscale(0) brightness(1)"},{filter:"grayscale(.3) brightness(.9)"}],
+        {duration:220, fill:"forwards"}
+      );
+    }
+
+    toModal2.addEventListener("click", () => {
+      modal1.classList.add("hidden");
+      modal2.classList.remove("hidden");
+    });
+
+    startBtn.addEventListener("click", () => {
+      startGame();
+    });
+
+    retryBtn.addEventListener("click", () => {
+      playerEl.style.filter = "";
+      startGame();
+    });
+
+    window.addEventListener("resize", () => {
+      if (!running) return;
+      updatePlayerMetrics();
+    });
+
+    window.addEventListener("contextmenu", (e)=> e.preventDefault());
+  </script>
+</body>
+</html>
